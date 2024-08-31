@@ -5,6 +5,12 @@ from collections import Counter
 import os
 import pytz
 
+def timestamp_to_eastern(timestamp):
+    eastern_tz = pytz.timezone('US/Eastern')
+    dt = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
+    dt = dt.replace(tzinfo=pytz.UTC).astimezone(eastern_tz)
+    return dt
+
 def get_commits(repo_owner, repo_name, token):
     url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits"
     headers = {"Authorization": f"token {token}"}
@@ -27,26 +33,25 @@ def get_commits(repo_owner, repo_name, token):
     return all_commits
 
 def extract_commit_info(commits):
-    eastern_tz = pytz.timezone('US/Eastern')
     commit_hours = []
     commit_dates = []
     for commit in commits:
         timestamp = commit['commit']['author']['date']
-        dt = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
-        dt = dt.replace(tzinfo=pytz.UTC).astimezone(eastern_tz)
+        dt = timestamp_to_eastern(timestamp)
         commit_hours.append(dt.hour)
         commit_dates.append(dt.date())
     return commit_hours, commit_dates
 
-def plot_histogram(hours):
+
+def plot_histogram(hours, filename, title):
     hour_counts = Counter(hours)
-    plt.figure(figsize=(12, 6))
-    plt.bar(range(24), [hour_counts[hour] for hour in range(24)])
+    plt.figure(figsize=(16, 6))
+    plt.bar([f"{h}:00" for h in range(24)], [hour_counts[hour] for hour in range(24)])
     plt.xlabel('Hour of Day (US/Eastern)')
     plt.ylabel('Number of Commits')
-    plt.title('Distribution of GitHub Commits by Hour of Day')
+    plt.title(title)
     plt.xticks(range(24))
-    plt.savefig('commit_histogram.png')
+    plt.savefig(filename)
     plt.close()
 
 def main():
@@ -61,18 +66,20 @@ def main():
     commits = get_commits(repo_owner, repo_name, token)
     if not commits:
         return
+    
+    # print([commit["commit"]["author"]["date"] for commit in commits])
+    # print([f"{timestamp_to_eastern(commit["commit"]["author"]["date"]).hour}" for commit in commits])
 
+    filename = f"commit_histogram_{repo_owner}_{repo_name}.png"
+    title = f"Commits by Hour of the Day: {repo_owner}/{repo_name}"
     commit_hours, commit_dates = extract_commit_info(commits)
-    plot_histogram(commit_hours)
-    print(f"Histogram saved as 'commit_histogram.png'")
+    plot_histogram(commit_hours, filename, title)
+    print(f"Histogram saved as '{filename}'")
 
     # Output additional statistics
-    total_commits = len(commits)
-    date_range = max(commit_dates) - min(commit_dates)
-    
+    total_commits = len(commits)    
     print(f"Total number of commits: {total_commits}")
     print(f"Date range of commits: {min(commit_dates)} to {max(commit_dates)} (US/Eastern)")
-    print(f"Total time span: {date_range.days} days")
 
 if __name__ == "__main__":
     main()
