@@ -1,7 +1,7 @@
 import requests
 import matplotlib.pyplot as plt
 from datetime import datetime
-from collections import Counter
+from collections import Counter, defaultdict
 import os
 import pytz
 
@@ -38,24 +38,48 @@ def get_commits(repo_owner, repo_name, token):
 
 
 def extract_commit_info(commits):
-    commit_hours = []
+    aliases = {
+        "Christian Wierzbicki": "cwierzbicki00",
+        "Mitch J.": "toBeOfUse",
+        "Mitch J": "toBeOfUse",
+        "emreedcodes": "EmReedCodes",
+        "Emily Reed": "EmReedCodes",
+        "Nicholas Llewellyn": "nllewellyn12",
+        "Nick Llewellyn": "nllewellyn12",
+        "Russel Heiser": "RHThree",
+        "Ryan S": "ryan smith"
+    }
+    commit_hours = defaultdict(list)
     commit_dates = []
     for commit in commits:
+        author = commit["commit"]["author"]["name"]
+        author = aliases.get(author, author)
         timestamp = commit["commit"]["author"]["date"]
         dt = timestamp_to_eastern(timestamp)
-        commit_hours.append(dt.hour)
+        commit_hours[author].append(dt.hour)
         commit_dates.append(dt.date())
     return commit_hours, commit_dates
 
 
 def plot_histogram(hours, filename, title):
-    hour_counts = Counter(hours)
     plt.figure(figsize=(16, 6))
-    plt.bar([f"{h}:00" for h in range(24)], [hour_counts[hour] for hour in range(24)])
+    bottom = [0] * 24
+    for author, counts in hours.items():
+        counts_counter = Counter(counts)
+        plt.bar(
+            [f"{h}:00" for h in range(24)],
+            [counts_counter[hour] for hour in range(24)],
+            label=author,
+            bottom=bottom,
+        )
+        for hour in range(24):
+            bottom[hour] += counts_counter[hour]
     plt.xlabel("Hour of Day (US/Eastern)")
     plt.ylabel("Number of Commits")
     plt.title(title)
     plt.xticks(range(24))
+    if len(hours) > 1:
+        plt.legend(loc="upper right")
     plt.savefig(filename)
     plt.close()
 
