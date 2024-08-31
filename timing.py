@@ -73,12 +73,10 @@ def main():
     if not commits:
         return
 
-    # print([commit["commit"]["author"]["date"] for commit in commits])
-    # print([f"{timestamp_to_eastern(commit["commit"]["author"]["date"]).hour}" for commit in commits])
+    commit_hours, commit_dates = extract_commit_info(commits)
 
     filename = f"commit_histogram_{repo_owner}_{repo_name}.png"
-    title = f"Commits by Hour of the Day: {repo_owner}/{repo_name}"
-    commit_hours, commit_dates = extract_commit_info(commits)
+    title = f"{repo_owner}/{repo_name}\nCommits by Hour of the Day\n({min(commit_dates)} to {max(commit_dates)})"
     plot_histogram(commit_hours, filename, title)
     print(f"Histogram saved as '{filename}'")
 
